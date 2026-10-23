@@ -5,12 +5,24 @@ from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
-_f = Fernet(os.environ["ENCRYPTION_KEY"].encode())
+
+_fernet = None
+
+
+def _get() -> Fernet:
+    """Created on first use, so importing this module works at build time (no env vars there)."""
+    global _fernet
+    if _fernet is None:
+        key = os.environ.get("ENCRYPTION_KEY")
+        if not key:
+            raise RuntimeError("ENCRYPTION_KEY is not set in the environment.")
+        _fernet = Fernet(key.strip().encode())
+    return _fernet
 
 
 def encrypt(text: str) -> str:
-    return _f.encrypt(text.encode()).decode()
+    return _get().encrypt(text.encode()).decode()
 
 
 def decrypt(text: str) -> str:
-    return _f.decrypt(text.encode()).decode()
+    return _get().decrypt(text.encode()).decode()
