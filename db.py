@@ -11,16 +11,20 @@ from psycopg.rows import dict_row
 BASE = Path(__file__).parent
 load_dotenv(BASE / ".env")
 
-MAX_IMAGES = 30  # database me ek waqt me kitni images rakhi ja sakti hain
+MAX_IMAGES = 30  # max images stored in the database at one time
 
 
 async def _connect() -> psycopg.AsyncConnection:
-    """Har query ke liye taaza connection (Neon free so jata hai, purane connections mar jate hain)."""
+    """A fresh connection for every query (Neon free scales to zero, so old connections die).
+    Errors never include the connection string (it contains the password)."""
+    dsn = os.environ.get("DATABASE_URL", "")
+    if not dsn:
+        raise RuntimeError("DATABASE_URL is not set.")
     last = None
     for attempt in range(3):
         try:
             return await psycopg.AsyncConnection.connect(
-                os.environ["DATABASE_URL"],
+                dsn,
                 row_factory=dict_row,
                 prepare_threshold=None,
                 connect_timeout=20,
@@ -28,12 +32,14 @@ async def _connect() -> psycopg.AsyncConnection:
         except psycopg.OperationalError as e:
             last = e
             await asyncio.sleep(2 * (attempt + 1))
-    raise last
+        except psycopg.Error:
+            raise RuntimeError("Database URL is invalid. Check DATABASE_URL (e.g. ...?sslmode=require).") from None
+    raise RuntimeError(f"Could not connect to the database ({type(last).__name__}).") from None
 
 
 async def _exec(sql, params, mode):
     conn = await _connect()
-    async with conn:  # block ke aakhir me commit aur connection band
+    async with conn:  # commit and close at the end of the block
         cur = await conn.execute(sql, params)
         if mode == "one":
             return await cur.fetchone()
@@ -83,7 +89,7 @@ async def image_exists(image_id) -> bool:
 
 
 async def latest_image_ids(n: int) -> list:
-    """Sab se nayi n images ki IDs, purani se nayi ki tarteeb me."""
+    """IDs of the newest n images, ordered oldest to newest."""
     rows = await _all("SELECT id FROM images ORDER BY created_at DESC LIMIT %s", (n,))
     return [r["id"] for r in reversed(rows)]
 
@@ -101,7 +107,7 @@ async def list_images() -> list:
 
 
 async def cleanup_images() -> None:
-    """Jo image kisi draft se nahi jurti (aur 1 ghante se purani hai) hata do."""
+    """Remove images not attached to any draft (and older than 1 hour)."""
     await _count(
         "DELETE FROM images i WHERE i.created_at < now() - interval '1 hour' "
         "AND NOT EXISTS (SELECT 1 FROM draft_images di WHERE di.image_id = i.id)"
@@ -116,12 +122,12 @@ _DRAFT_SELECT = (
 
 
 async def count_drafts() -> int:
-    """Sirf active drafts gine jate hain (published/deleted history hadd me nahi aati)."""
+    """Only active drafts are counted (published/deleted history does not count toward the limit)."""
     return (await _one("SELECT count(*) AS n FROM drafts WHERE status IN ('draft', 'failed')"))["n"]
 
 
 async def create_draft(content: str, items: list) -> dict:
-    """items: [(image_id, alt_text), ...]. Draft aur images ek hi transaction me."""
+    """items: [(image_id, alt_text), ...]. Draft and images in one transaction."""
     conn = await _connect()
     async with conn:
         cur = await conn.execute(
@@ -166,7 +172,7 @@ async def get_draft_images_data(draft_id) -> list:
 
 
 async def update_draft(draft_id, content: str, items=None):
-    """items None ho to images waisi hi rehti hain, warna poori list badal jati hai."""
+    """If items is None the images stay as they are, otherwise the whole list is replaced."""
     conn = await _connect()
     async with conn:
         cur = await conn.execute(
@@ -197,8 +203,8 @@ async def delete_draft(draft_id) -> bool:
 
 
 async def claim_for_publish(draft_id):
-    """Atomic: sirf ek request jeetay gi, double post nahi hoga.
-    10 minute se atka hua 'publishing' (server crash) dobara try ho sakta hai."""
+    """Atomic: only one request wins, so no double posting.
+    A 'publishing' draft stuck for over 10 minutes (server crash) can be retried."""
     return await _one(
         "UPDATE drafts SET status = 'publishing', updated_at = now() "
         "WHERE id = %s AND (status IN ('draft', 'failed') "
@@ -215,7 +221,7 @@ async def mark_published(draft_id, post_urn: str) -> None:
             "published_at = now(), updated_at = now() WHERE id = %s",
             (post_urn, draft_id),
         )
-        # Post ho gayi, ab database me images ki zaroorat nahi (jagah bachti hai)
+        # Post is live, the database no longer needs the images (saves space)
         await conn.execute("DELETE FROM draft_images WHERE draft_id = %s", (draft_id,))
 
 
@@ -264,7 +270,7 @@ async def consume_upload_ticket(token: str):
     )
 
 
-# ---------- approval tickets (user ki manzoori) ----------
+# ---------- approval tickets (user's approval) ----------
 async def create_approval(draft_id, action: str, fingerprint: str, minutes: int = 15) -> str:
     token = secrets.token_urlsafe(32)
     await _count(
