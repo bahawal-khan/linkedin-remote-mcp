@@ -350,7 +350,4 @@ async def linkedin_status() -> str:
 
 
 if __name__ == "__main__":
-    # Local: 127.0.0.1:8000. On hosts like Render, PORT is set and we listen on all interfaces.
-    port = int(os.getenv("PORT", "8000"))
-    host = "0.0.0.0" if os.getenv("PORT") else "127.0.0.1"
-    mcp.run(transport="http", host=host, port=port)
+    mcp.run(transport="http", host="127.0.0.1", port=8000)
