@@ -1,6 +1,12 @@
 .venv/
+venv/
 .env
+.env.*
+!.env.example
 __pycache__/
 *.pyc
+.pytest_cache/
 linkedin_token.json
 images/
+.vercel/
+node_modules/

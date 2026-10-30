@@ -16,13 +16,21 @@ load_dotenv(Path(__file__).parent / ".env")
 import db  # noqa: E402
 import linkedin_client  # noqa: E402
 import ops  # noqa: E402
-import web  # noqa: E402
 
 # Required for async psycopg on Windows (no effect on Linux/Horizon)
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 log = logging.getLogger("linkedin-remote")
+
+# BASE_URL: public URL of this MCP server (only needed for the optional Google login).
+# PAGES_URL: set this when the browser pages (image upload, approval) are hosted separately,
+# e.g. on Vercel (see pages/). Needed when the MCP host protects every URL with a login (like Horizon).
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
+PAGES_URL = os.getenv("PAGES_URL", "").rstrip("/")
+SPLIT = bool(PAGES_URL)
+LINK_BASE = PAGES_URL if SPLIT else BASE_URL
+MAX_UPLOAD_FILES = 20
 
 # Optional Google login. Not needed if the host (Horizon) authentication is ON.
 AUTH = None
@@ -35,14 +43,23 @@ if os.getenv("GOOGLE_CLIENT_ID"):
     AUTH = GoogleProvider(
         client_id=os.environ["GOOGLE_CLIENT_ID"],
         client_secret=os.environ["GOOGLE_CLIENT_SECRET"],
-        base_url=web.BASE_URL,
+        base_url=BASE_URL,
         required_scopes=["openid", "https://www.googleapis.com/auth/userinfo.email"],
     )
-elif not web.BASE_URL.startswith("http://localhost"):
+elif not BASE_URL.startswith("http://localhost"):
     log.warning("The server has no login of its own. Host authentication must be ON!")
 
-mcp = FastMCP("linkedin-remote", auth=AUTH, mask_error_details=True)
-web.register(mcp)
+INSTRUCTIONS = (
+    "Manage LinkedIn post drafts for the user. Drafts, edits and image uploads are safe. "
+    "Nothing is posted by you: publish_draft / delete_linkedin_post only create an approval link that the "
+    "USER must open in a browser and tap. Never say a post is published or deleted until the final tool "
+    "result says so. Show the user the exact text before asking for approval."
+)
+mcp = FastMCP("linkedin-remote", instructions=INSTRUCTIONS, auth=AUTH, mask_error_details=True)
+if not SPLIT:
+    import web  # same-host mode: this server also serves /upload and /approve
+
+    web.register(mcp)
 
 MAX_TEXT = 3000
 MAX_DRAFTS = 100
@@ -56,6 +73,7 @@ async def guard() -> None:
     global _ready
     if not _ready:
         await db.init_db()
+        await db.purge_old_tickets()
         _ready = True
     if AUTH is not None:
         token = get_access_token()
@@ -131,11 +149,11 @@ def _kind(n: int) -> str:
 async def upload_image_link() -> str:
     """Get a one-time link for uploading images. Open it in a browser (works on phones too, several images at once)."""
     await guard()
-    t = await db.create_upload_ticket(15)
+    t = await db.create_upload_ticket(15, MAX_UPLOAD_FILES if SPLIT else 1)
     return (
-        f"Open this link in your browser and choose your images (up to {web.MAX_FILES} at a time, "
-        "valid for 15 minutes, works only once, do not share it):\n"
-        f"{web.BASE_URL}/upload?t={t}\n\nTell me when the upload is done."
+        f"Open this link in your browser and choose your images (up to {MAX_UPLOAD_FILES} at a time, "
+        "valid for 15 minutes, do not share it):\n"
+        f"{LINK_BASE}/upload?t={t}\n\nTell me when the upload is done."
     )
 
 
@@ -299,36 +317,66 @@ async def check_publish(draft_id: str, upload_images: bool = False) -> str:
 
 @mcp.tool
 async def publish_draft(draft_id: str) -> str:
-    """Create an approval link to publish a draft to LinkedIn (with 0, 1 or several images). This does NOT publish by itself. Give the link to the user; the post goes out only when the user opens it and taps the button."""
+    """Create an approval link to publish a draft to LinkedIn (with 0, 1 or several images). This does NOT publish by itself. Give the link to the user; the post goes out only after the user opens it and approves."""
     await guard()
     did = _uuid(draft_id)
     d = await db.get_draft(did)
     if not d or d["status"] not in ("draft", "failed", "publishing"):
         return "Draft cannot be published (not found, or already published)."
-    token = await db.create_approval(did, "publish", await ops.fingerprint(did), 15)
-    return (
+    token = await db.create_approval(
+        did, "publish", await ops.fingerprint(did), 15, linkedin_client.VISIBILITY, linkedin_client.DRY_RUN
+    )
+    head = (
         f"Type: {_kind(d['image_count'])}, visibility {linkedin_client.VISIBILITY}. "
         f"DRY_RUN: {'ON' if linkedin_client.DRY_RUN else 'OFF'}.\n---\n{d['content']}\n---\n"
-        "Give the user this link (valid 15 minutes, works once). The post is published only when the user "
-        f"opens it and taps 'Yes, publish':\n{web.BASE_URL}/approve?t={token}\n"
-        "You cannot publish by yourself. Ask the user to open the link and tap the button, then tell you."
+        f"Give the user this link (valid 15 minutes):\n{LINK_BASE}/approve?t={token}\n"
+    )
+    if SPLIT:
+        return head + (
+            "The user must open it and tap 'Approve publishing'. You cannot publish by yourself. "
+            "When the user says they approved, call finish_publish with this draft ID."
+        )
+    return head + (
+        "The post is published only when the user opens it and taps 'Yes, publish'. "
+        "You cannot publish by yourself. Ask the user to tap the button, then tell you."
     )
 
 
 @mcp.tool
 async def delete_linkedin_post(draft_id: str) -> str:
-    """Create an approval link to delete a published post from LinkedIn. This does NOT delete by itself; the post is removed only when the user opens the link and taps the button."""
+    """Create an approval link to delete a published post from LinkedIn. This does NOT delete by itself; the post is removed only after the user opens the link and approves."""
     await guard()
     did = _uuid(draft_id)
     d = await db.get_draft(did)
     if not d or d["status"] != "published" or not d["linkedin_post_urn"]:
         return "This draft is not a published post."
-    token = await db.create_approval(did, "delete", await ops.fingerprint(did), 15)
-    return (
-        f"This post will be removed from LinkedIn: {d['linkedin_post_urn']}\n---\n{d['content']}\n---\n"
-        "Give the user this link (valid 15 minutes, works once). The post is deleted only when the user "
-        f"opens it and taps 'Yes, delete':\n{web.BASE_URL}/approve?t={token}"
+    token = await db.create_approval(
+        did, "delete", await ops.fingerprint(did), 15, linkedin_client.VISIBILITY, linkedin_client.DRY_RUN
     )
+    head = (
+        f"This post will be removed from LinkedIn: {d['linkedin_post_urn']}\n---\n{d['content']}\n---\n"
+        f"Give the user this link (valid 15 minutes):\n{LINK_BASE}/approve?t={token}\n"
+    )
+    if SPLIT:
+        return head + (
+            "The user must open it and tap 'Approve removal'. When the user says they approved, "
+            "call finish_delete_post with this draft ID."
+        )
+    return head + "The post is deleted only when the user opens the link and taps 'Yes, delete'."
+
+
+@mcp.tool
+async def finish_publish(draft_id: str) -> str:
+    """Complete a publish AFTER the user approved it in the browser (link from publish_draft, valid 10 minutes after approval). Call this only when the user says they approved. Without a fresh approval nothing happens."""
+    await guard()
+    return await ops.finish(_uuid(draft_id), "publish")
+
+
+@mcp.tool
+async def finish_delete_post(draft_id: str) -> str:
+    """Complete the removal of a LinkedIn post AFTER the user approved it in the browser (link from delete_linkedin_post). Call this only when the user says they approved. Without a fresh approval nothing happens."""
+    await guard()
+    return await ops.finish(_uuid(draft_id), "delete")
 
 
 @mcp.tool(annotations=READ_ONLY)

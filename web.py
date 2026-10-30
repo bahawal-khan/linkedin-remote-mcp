@@ -18,10 +18,10 @@ import linkedin_client  # noqa: E402
 import ops  # noqa: E402
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
-MAX_BYTES = 5 * 1024 * 1024        # har image
-MAX_FILES = 20                     # ek baar me
-MAX_TOTAL = 30 * 1024 * 1024        # saari files mila kar
-Image.MAX_IMAGE_PIXELS = 36_000_000  # bohat bari image (decompression bomb) rokne ke liye
+MAX_BYTES = 5 * 1024 * 1024        # per image
+MAX_FILES = 20                     # per upload
+MAX_TOTAL = 30 * 1024 * 1024        # all files together
+Image.MAX_IMAGE_PIXELS = 36_000_000  # guards against decompression bombs
 
 SEC_HEADERS = {
     "Cache-Control": "no-store",
@@ -48,21 +48,21 @@ img{{max-width:100%;border-radius:6px;margin:4px 0}}
 
 def bad_link() -> HTMLResponse:
     return page(
-        "Link kaam nahi karta",
-        "<h2>Yeh link kaam nahi karta</h2><p>Expire ho gaya ya pehle istemal ho chuka hai. "
-        "Claude me <b>upload_image_link</b> dobara chalayen.</p>",
+        "Link does not work",
+        "<h2>This link does not work</h2><p>It expired or was already used. "
+        "Ask your assistant to run <b>upload_image_link</b> again.</p>",
         400,
     )
 
 
 def _clean_image(raw: bytes):
-    """Image check karta hai aur dobara encode karta hai (EXIF/GPS metadata hat jata hai)."""
+    """Validate the image and re-encode it (this strips EXIF/GPS metadata)."""
     with warnings.catch_warnings():
         warnings.simplefilter("error", Image.DecompressionBombWarning)
         im = Image.open(io.BytesIO(raw))
         fmt = im.format
         if fmt not in ("PNG", "JPEG", "WEBP"):
-            raise ValueError("Sirf PNG, JPG ya WEBP image chalegi.")
+            raise ValueError("Only PNG, JPG or WEBP images are allowed.")
         im.load()
     im = ImageOps.exif_transpose(im)
     out = io.BytesIO()
@@ -81,54 +81,53 @@ def register(mcp) -> None:
         token = request.query_params.get("t", "")
         if not token or not await db.peek_upload_ticket(token):
             return bad_link()
-        body = f"""<h2>Images upload karen</h2>
-<p>PNG, JPG ya WEBP. Ek baar me {MAX_FILES} tak, har image 5 MB tak.
-Kai images ek saath chun sakte hain.</p>
+        body = f"""<h2>Upload images</h2>
+<p>PNG, JPG or WEBP. Up to {MAX_FILES} at a time, 5 MB each. You can pick several at once.</p>
 <form method="post" action="/upload" enctype="multipart/form-data">
 <input type="hidden" name="t" value="{html.escape(token)}">
 <input type="file" name="file" accept="image/png,image/jpeg,image/webp" multiple required>
-<button type="submit">Upload</button>
+<button type="submit">Upload images</button>
 </form>"""
-        return page("Images upload", body)
+        return page("Upload images", body)
 
     @mcp.custom_route("/upload", methods=["POST"])
     async def upload_submit(request: Request):
         cl = request.headers.get("content-length", "")
         if cl.isdigit() and int(cl) > MAX_TOTAL + 200_000:
-            return page("Bari files", "<h2>Files bohat bari hain (kul 30 MB se kam rakhen)</h2>", 413)
+            return page("Too large", "<h2>The files are too large (keep the total under 30 MB)</h2>", 413)
         form = await request.form()
         token = str(form.get("t", ""))
         if not token or not await db.peek_upload_ticket(token):
             return bad_link()
         files = [f for f in form.getlist("file") if hasattr(f, "read")]
         if not files:
-            return page("Galat", "<h2>Koi file nahi mili</h2>", 400)
+            return page("Error", "<h2>No file received</h2>", 400)
         if len(files) > MAX_FILES:
-            return page("Zyada files", f"<h2>Ek baar me {MAX_FILES} se zyada images nahi</h2>", 400)
+            return page("Too many files", f"<h2>No more than {MAX_FILES} images at a time</h2>", 400)
 
         cleaned = []
         for n, f in enumerate(files, 1):
             raw = await f.read(MAX_BYTES + 1)
             if not raw or len(raw) > MAX_BYTES:
-                return page("Galat", f"<h2>File {n} khali ya 5 MB se bari hai</h2>", 400)
+                return page("Error", f"<h2>File {n} is empty or larger than 5 MB</h2>", 400)
             try:
                 cleaned.append(await asyncio.to_thread(_clean_image, raw))
             except Exception:
                 return page(
-                    "Galat",
-                    f"<h2>File {n} sahi image nahi lagti (PNG, JPG ya WEBP chahiye)</h2>",
+                    "Error",
+                    f"<h2>File {n} is not a valid image (PNG, JPG or WEBP needed)</h2>",
                     400,
                 )
         if await db.count_images() + len(cleaned) > db.MAX_IMAGES:
-            return page("Jagah nahi", "<h2>Bohat images jama hain. Purane drafts delete karen.</h2>", 400)
+            return page("Full", "<h2>Too many stored images. Delete old drafts first.</h2>", 400)
         if not await db.consume_upload_ticket(token):
             return bad_link()
         for mime, data in cleaned:
             await db.save_image(mime, data)
         return page(
-            "Upload ho gayi",
-            f"<h2>{len(cleaned)} image(s) save ho gayin</h2><p>Ab Claude me wapas jayen aur kahen: "
-            "<b>in images ke saath draft banao</b>.</p>",
+            "Uploaded",
+            f"<h2>{len(cleaned)} image(s) saved</h2><p>Go back to your assistant and ask it to "
+            "<b>create a draft with these images</b>.</p>",
         )
 
     def _thumb(data: bytes) -> str:
@@ -140,9 +139,9 @@ Kai images ek saath chun sakte hain.</p>
 
     def bad_approval() -> HTMLResponse:
         return page(
-            "Link kaam nahi karta",
-            "<h2>Yeh link kaam nahi karta</h2><p>Expire ho gaya, pehle istemal ho chuka hai, ya draft badal gaya. "
-            "Claude/ChatGPT me publish dobara chalayen.</p>",
+            "Link does not work",
+            "<h2>This link does not work</h2><p>It expired, was already used, or the draft changed. "
+            "Ask your assistant to create a new approval link.</p>",
             400,
         )
 
@@ -163,12 +162,12 @@ Kai images ek saath chun sakte hain.</p>
                 src = await asyncio.to_thread(_thumb, bytes(r["data"]))
                 thumbs += f'<img src="{src}" alt="">'
         dry = (
-            '<p class="warn">DRY RUN ON hai: button dabane par bhi LinkedIn par kuch nahi jayega.</p>'
+            '<p class="warn">DRY RUN is on: nothing will be sent to LinkedIn even if you tap the button.</p>'
             if linkedin_client.DRY_RUN
             else ""
         )
-        title = "LinkedIn par publish karen?" if publish else "LinkedIn se yeh post hata den?"
-        label = "Haan, publish karo" if publish else "Haan, hata do"
+        title = "Publish this post to LinkedIn?" if publish else "Remove this post from LinkedIn?"
+        label = "Yes, publish" if publish else "Yes, delete"
         body = f"""<h2>{title}</h2>{dry}
 <p>Visibility: <b>{html.escape(linkedin_client.VISIBILITY)}</b></p>
 <pre>{html.escape(d["content"])}</pre>{thumbs}
@@ -176,8 +175,8 @@ Kai images ek saath chun sakte hain.</p>
 <input type="hidden" name="t" value="{html.escape(token)}">
 <button type="submit">{label}</button>
 </form>
-<p>Na karna ho to bas yeh page band kar den.</p>"""
-        return page("Manzoori", body)
+<p>To cancel, just close this page.</p>"""
+        return page("Approval", body)
 
     @mcp.custom_route("/approve", methods=["POST"])
     async def approve_submit(request: Request):
@@ -193,4 +192,4 @@ Kai images ek saath chun sakte hain.</p>
             msg = await ops.do_publish(t["draft_id"])
         else:
             msg = await ops.do_delete_post(t["draft_id"])
-        return page("Nateeja", f"<h2>{html.escape(msg)}</h2><p>Ab Claude/ChatGPT me wapas jayen.</p>")
+        return page("Result", f"<h2>{html.escape(msg)}</h2><p>You can go back to your assistant now.</p>")

@@ -14,16 +14,16 @@ from crypto import decrypt  # noqa: E402
 API = "https://api.linkedin.com"
 API_VERSION = os.getenv("LINKEDIN_VERSION", "202609")
 
-# Default me DRY RUN OFF hai (post tab hi jati hai jab user approval link par button dabaye).
-# Test ke liye .env me DRY_RUN=1 likh sakte hain.
+# DRY_RUN=1 sends nothing to LinkedIn (posting and deleting are skipped). Default is OFF, because a post
+# is only created after the user approves it on the approval page. Use DRY_RUN=1 while testing.
 DRY_RUN = os.getenv("DRY_RUN", "0") != "0"
 
-# Pehle tests ke liye POST_VISIBILITY=CONNECTIONS rakh sakte hain (sirf connections dekhenge).
+# For first tests use POST_VISIBILITY=CONNECTIONS (only your connections can see the post).
 VISIBILITY = os.getenv("POST_VISIBILITY", "PUBLIC").upper()
 if VISIBILITY not in ("PUBLIC", "CONNECTIONS"):
     VISIBILITY = "PUBLIC"
 
-# '#' escape nahi hota taake hashtags chalen. Post ajeeb dikhe to '#' wapas yahan daalen.
+# '#' is left unescaped so hashtags work. If a post renders oddly, add '#' back to this set.
 _RESERVED = set("\\|{}@[]()<>*_~")
 
 
@@ -38,9 +38,9 @@ def escape_text(text: str) -> str:
 async def _credentials():
     row = await db.get_token()
     if not row:
-        raise LinkedInError("LinkedIn connect nahi hai. Apne computer par `python auth.py` chalayen.")
+        raise LinkedInError("LinkedIn is not connected. Run `python auth.py` on your own computer.")
     if row["expires_at"] <= datetime.now(timezone.utc):
-        raise LinkedInError("LinkedIn token expire ho gaya. `python auth.py` dobara chalayen.")
+        raise LinkedInError("The LinkedIn token has expired. Run `python auth.py` again.")
     return decrypt(row["access_token_enc"]), row["person_urn"]
 
 
@@ -87,16 +87,16 @@ def build_content(uploaded: list) -> dict | None:
 
 
 async def verify_token() -> str:
-    """Token LinkedIn ko dikhata hai. Sirf parhta hai, kuch likhta nahi. Member URN wapas deta hai."""
+    """Show the token to LinkedIn. Read only, nothing is written. Returns the member URN."""
     token, owner = await _credentials()
     async with httpx.AsyncClient(timeout=20) as http:
         r = await http.get(f"{API}/v2/userinfo", headers={"Authorization": f"Bearer {token}"})
     if r.status_code == 401:
-        raise LinkedInError("LinkedIn ne token qubool nahi kiya (401). `python auth.py` dobara chalayen.")
+        raise LinkedInError("LinkedIn rejected the token (401). Run `python auth.py` again.")
     if r.status_code != 200:
         raise LinkedInError(f"LinkedIn userinfo error {r.status_code}")
     if f"urn:li:person:{r.json().get('sub')}" != owner:
-        raise LinkedInError("Token kisi aur member ka lagta hai (member ID match nahi hui).")
+        raise LinkedInError("The token belongs to a different member (member ID does not match).")
     return owner
 
 
@@ -118,7 +118,7 @@ async def _upload_image(http: httpx.AsyncClient, token: str, owner: str, data: b
 
 
 async def test_image_upload(images: list) -> list:
-    """Images LinkedIn par upload karta hai lekin post NAHI banata. images: [(bytes, alt), ...]"""
+    """Upload images to LinkedIn but do NOT create a post. images: [(bytes, alt), ...]"""
     token, owner = await _credentials()
     urns = []
     async with httpx.AsyncClient(timeout=60) as http:
@@ -140,7 +140,7 @@ async def publish_post(text: str, images: list | None = None) -> str:
             body["content"] = content
         r = await http.post(f"{API}/rest/posts", json=body, headers=_headers(token))
     if r.status_code == 401:
-        raise LinkedInError("Token expire ho gaya. `python auth.py` dobara chalayen.")
+        raise LinkedInError("The token has expired. Run `python auth.py` again.")
     if r.status_code != 201:
         raise LinkedInError(f"LinkedIn error {r.status_code}: {r.text[:300]}")
     return r.headers.get("x-restli-id", "unknown")

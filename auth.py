@@ -1,4 +1,3 @@
-import json
 import os
 import secrets
 import urllib.parse
@@ -31,7 +30,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.end_headers()
-        self.wfile.write(b"Done. Ab terminal par wapis jayen.")
+        self.wfile.write(b"Done. You can close this tab and go back to the terminal.")
 
     def log_message(self, *a):
         pass
@@ -46,12 +45,12 @@ url = "https://www.linkedin.com/oauth/v2/authorization?" + urllib.parse.urlencod
         "scope": SCOPE,
     }
 )
-print("Browser khul raha hai. Na khule to yeh link kholen:\n", url)
+print("Opening your browser. If it does not open, visit this link:\n", url)
 webbrowser.open(url)
 HTTPServer(("localhost", 8080), Handler).handle_request()
 
 if "code" not in result:
-    raise SystemExit("Login fail hua ya state match nahi hui")
+    raise SystemExit("Login failed or the state did not match.")
 
 tok = httpx.post(
     "https://www.linkedin.com/oauth/v2/accessToken",
@@ -64,7 +63,7 @@ tok = httpx.post(
     },
 ).json()
 if "access_token" not in tok:
-    raise SystemExit("Token nahi mila. Client ID/Secret aur Redirect URL check karen.")
+    raise SystemExit("No token received. Check the Client ID/Secret and the redirect URL.")
 
 info = httpx.get(
     "https://api.linkedin.com/v2/userinfo",
@@ -84,4 +83,4 @@ with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
             float(tok.get("expires_in", 5184000)),
         ),
     )
-print("Token encrypted ho kar database me save ho gaya.")
+print("Token encrypted and saved to the database.")

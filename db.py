@@ -72,10 +72,10 @@ def _h(value: str) -> str:
 
 
 # ---------- images ----------
-async def save_image(mime: str, data: bytes):
+async def save_image(mime: str, data: bytes, thumb: bytes | None = None):
     row = await _one(
-        "INSERT INTO images (mime, data, size_bytes) VALUES (%s, %s, %s) RETURNING id",
-        (mime, data, len(data)),
+        "INSERT INTO images (mime, data, size_bytes, thumb) VALUES (%s, %s, %s, %s) RETURNING id",
+        (mime, data, len(data), thumb),
     )
     return row["id"]
 
@@ -244,12 +244,13 @@ async def get_token():
 
 
 # ---------- upload tickets ----------
-async def create_upload_ticket(minutes: int = 15) -> str:
+async def create_upload_ticket(minutes: int = 15, uses: int = 1) -> str:
+    """uses > 1 lets the pages app upload several images one by one with the same link."""
     token = secrets.token_urlsafe(32)
     await _count(
-        "INSERT INTO upload_tickets (token_hash, expires_at) "
-        "VALUES (%s, now() + make_interval(mins => %s))",
-        (_h(token), minutes),
+        "INSERT INTO upload_tickets (token_hash, expires_at, uses_left) "
+        "VALUES (%s, now() + make_interval(mins => %s), %s)",
+        (_h(token), minutes, uses),
     )
     return token
 
@@ -257,26 +258,35 @@ async def create_upload_ticket(minutes: int = 15) -> str:
 async def peek_upload_ticket(token: str):
     return await _one(
         "SELECT 1 AS ok FROM upload_tickets WHERE token_hash = %s "
-        "AND used_at IS NULL AND expires_at > now()",
+        "AND used_at IS NULL AND uses_left > 0 AND expires_at > now()",
         (_h(token),),
     )
 
 
 async def consume_upload_ticket(token: str):
     return await _one(
-        "UPDATE upload_tickets SET used_at = now() WHERE token_hash = %s "
-        "AND used_at IS NULL AND expires_at > now() RETURNING 1 AS ok",
+        "UPDATE upload_tickets SET used_at = now(), uses_left = 0 WHERE token_hash = %s "
+        "AND used_at IS NULL AND uses_left > 0 AND expires_at > now() RETURNING 1 AS ok",
         (_h(token),),
     )
 
 
 # ---------- approval tickets (user's approval) ----------
-async def create_approval(draft_id, action: str, fingerprint: str, minutes: int = 15) -> str:
+async def create_approval(
+    draft_id,
+    action: str,
+    fingerprint: str,
+    minutes: int = 15,
+    visibility: str = "PUBLIC",
+    dry_run: bool = False,
+) -> str:
+    """visibility and dry_run are stored so the approval page can show what will really happen."""
     token = secrets.token_urlsafe(32)
     await _count(
-        "INSERT INTO approval_tickets (token_hash, draft_id, action, fingerprint, expires_at) "
-        "VALUES (%s, %s, %s, %s, now() + make_interval(mins => %s))",
-        (_h(token), draft_id, action, fingerprint, minutes),
+        "INSERT INTO approval_tickets "
+        "(token_hash, draft_id, action, fingerprint, expires_at, visibility, dry_run) "
+        "VALUES (%s, %s, %s, %s, now() + make_interval(mins => %s), %s, %s)",
+        (_h(token), draft_id, action, fingerprint, minutes, visibility, dry_run),
     )
     return token
 
@@ -295,3 +305,24 @@ async def consume_approval(token: str):
         "AND used_at IS NULL AND expires_at > now() RETURNING draft_id, action, fingerprint",
         (_h(token),),
     )
+
+
+async def consume_approved(draft_id, action: str, window_minutes: int = 10):
+    """Split mode: the user approved in the browser (approved_at is set by the pages app).
+    Atomically uses up every approved, unused ticket of this draft/action and returns the
+    fingerprint of the newest one (or None when there is no fresh approval)."""
+    return await _one(
+        "WITH c AS ("
+        " UPDATE approval_tickets SET used_at = now()"
+        " WHERE draft_id = %s AND action = %s AND used_at IS NULL"
+        " AND approved_at IS NOT NULL AND approved_at > now() - make_interval(mins => %s)"
+        " RETURNING fingerprint, approved_at"
+        ") SELECT fingerprint FROM c ORDER BY approved_at DESC LIMIT 1",
+        (draft_id, action, window_minutes),
+    )
+
+
+async def purge_old_tickets() -> None:
+    """Housekeeping: forget tickets that expired more than a day ago."""
+    await _count("DELETE FROM approval_tickets WHERE expires_at < now() - interval '1 day'")
+    await _count("DELETE FROM upload_tickets WHERE expires_at < now() - interval '1 day'")

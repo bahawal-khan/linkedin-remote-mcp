@@ -1,3 +1,7 @@
+"""The two actions that touch LinkedIn: publish a draft and delete a published post.
+
+They are only called after the user approved (approval page or finish_* tools).
+"""
 import asyncio
 import hashlib
 
@@ -8,7 +12,9 @@ MAX_POST_IMAGES = 9
 
 
 async def fingerprint(draft_id) -> str | None:
-    """Draft ka text + images ka hash. Manzoori ke baad draft badle to manzoori bekaar ho jati hai."""
+    """Hash of the draft text + image IDs. If the draft changes after the user approved, the approval is void.
+
+    pages/api/index.py computes the same value; keep both in sync."""
     d = await db.get_draft(draft_id)
     if not d:
         return None
@@ -19,44 +25,57 @@ async def fingerprint(draft_id) -> str | None:
 
 async def do_publish(draft_id) -> str:
     if linkedin_client.DRY_RUN:
-        return "DRY RUN on hai: LinkedIn par kuch nahi gaya. Asli posting ke liye server ke env me DRY_RUN=0 karen."
+        return "DRY RUN is on: nothing was sent to LinkedIn. Set DRY_RUN=0 on the server for live posting."
     d = await db.claim_for_publish(draft_id)
     if not d:
-        return "Draft publish nahi ho sakta (nahi mila, pehle hi publish hai, ya koi aur request chal rahi hai)."
+        return "The draft cannot be published (not found, already published, or another request is running)."
     try:
         rows = await db.get_draft_images_data(draft_id)
         images = [(bytes(r["data"]), r["alt_text"]) for r in rows]
         if len(images) > MAX_POST_IMAGES:
-            raise linkedin_client.LinkedInError(f"{MAX_POST_IMAGES} se zyada images nahi ho sakti.")
+            raise linkedin_client.LinkedInError(f"A post cannot have more than {MAX_POST_IMAGES} images.")
         urn = await linkedin_client.publish_post(d["content"], images)
     except linkedin_client.LinkedInError as e:
         await db.mark_failed(draft_id, str(e))
-        return f"Publish fail: {e}"
+        return f"Publish failed: {e}"
     except Exception:
         await db.mark_failed(draft_id, "unexpected error")
-        return "Publish fail: unexpected error."
-    # Post ban chuki hai: status save karne me 3 koshish (warna draft 'publishing' me atak jata)
-    for attempt in range(3):
+        return "Publish failed: unexpected error."
+    # The post exists now. Try 3 times to record it, otherwise the draft would stay in 'publishing'.
+    for _ in range(3):
         try:
             await db.mark_published(draft_id, urn)
             break
         except Exception:
             await asyncio.sleep(2)
     else:
-        return f"Post LinkedIn par ban gayi ({urn}) lekin database update nahi hua. Dobara publish MAT karen."
+        return f"The post was created on LinkedIn ({urn}) but the database was not updated. Do NOT publish again."
     await db.cleanup_images()
-    return f"Publish ho gaya. LinkedIn ID: {urn}"
+    return f"Published. LinkedIn ID: {urn}"
 
 
 async def do_delete_post(draft_id) -> str:
     d = await db.get_draft(draft_id)
     if not d or d["status"] != "published" or not d["linkedin_post_urn"]:
-        return "Yeh draft publish ki hui post nahi hai."
+        return "This draft is not a published post."
     if linkedin_client.DRY_RUN:
-        return "DRY RUN on hai: LinkedIn se kuch delete nahi hua."
+        return "DRY RUN is on: nothing was deleted from LinkedIn."
     try:
         await linkedin_client.delete_post(d["linkedin_post_urn"])
     except linkedin_client.LinkedInError as e:
-        return f"LinkedIn se delete nahi hui: {e}"
+        return f"Could not delete the post from LinkedIn: {e}"
     await db.mark_deleted(draft_id)
-    return "Post LinkedIn se hata di gayi."
+    return "The post was removed from LinkedIn."
+
+
+async def finish(draft_id, action: str) -> str:
+    """Split mode: complete a publish/delete after the user approved it on the pages app."""
+    row = await db.consume_approved(draft_id, action)
+    if not row:
+        return (
+            "No fresh approval found. Ask the user to open the approval link and tap the button "
+            "(an approval is valid for 10 minutes), then try again. If the link expired, create a new one."
+        )
+    if await fingerprint(draft_id) != row["fingerprint"]:
+        return "The draft changed after the link was created, so the approval was discarded. Create a new approval link."
+    return await (do_publish(draft_id) if action == "publish" else do_delete_post(draft_id))
