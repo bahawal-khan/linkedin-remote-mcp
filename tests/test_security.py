@@ -296,3 +296,24 @@ def test_real_client_payloads_against_mock_linkedin(srv, monkeypatch, q):
     assert post["content"]["multiImage"]["images"][0]["altText"] == "alt1" and "altText" not in post["content"]["multiImage"]["images"][1]
     asyncio.run(lc.delete_post("urn:li:share:77"))
     assert seen[-1][0] == "DELETE" and "urn%3Ali%3Ashare%3A77" in seen[-1][1]
+
+
+def test_linkedin_status_and_check_publish_full_path(srv, monkeypatch, q):
+    from datetime import datetime, timedelta, timezone
+    from crypto import encrypt
+
+    monkeypatch.setattr(lc, "DRY_RUN", True)
+    assert "not connected" in call(srv, "linkedin_status") and "DRY RUN ON" in call(srv, "linkedin_status")
+    q("INSERT INTO linkedin_token (id, access_token_enc, person_urn, expires_at) VALUES (1, %s, %s, %s)",
+      (encrypt("t"), "urn:li:person:me", datetime.now(timezone.utc) + timedelta(days=30)))
+    assert "about 29 days" in call(srv, "linkedin_status") or "about 30 days" in call(srv, "linkedin_status")
+    monkeypatch.setattr(lc, "DRY_RUN", False)
+    assert "DRY RUN OFF" in call(srv, "linkedin_status")
+
+    async def fake_verify():
+        return "urn:li:person:me"
+
+    monkeypatch.setattr(lc, "verify_token", fake_verify)
+    did = new_draft(srv, text="Check me #AI")
+    out = call(srv, "check_publish", draft_id=did)
+    assert "OK   LinkedIn accepted the token" in out and "{hashtag|\\#|AI}" in out
