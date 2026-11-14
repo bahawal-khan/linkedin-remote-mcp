@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -26,7 +27,7 @@ log = logging.getLogger("linkedin-remote")
 # BASE_URL: public URL of this MCP server (only needed for the optional Google login).
 # PAGES_URL: set this when the browser pages (image upload, approval) are hosted separately,
 # e.g. on Vercel (see pages/). Needed when the MCP host protects every URL with a login (like Horizon).
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").strip().strip("\"'").rstrip("/")
 PAGES_URL = os.getenv("PAGES_URL", "").rstrip("/")
 SPLIT = bool(PAGES_URL)
 LINK_BASE = PAGES_URL if SPLIT else BASE_URL
@@ -35,13 +36,14 @@ MAX_UPLOAD_FILES = 20
 # Optional Google login. Not needed if the host (Horizon) authentication is ON.
 AUTH = None
 OWNER_EMAIL = os.getenv("OWNER_EMAIL", "").strip().lower()
-if os.getenv("GOOGLE_CLIENT_ID"):
+_google_id = os.getenv("GOOGLE_CLIENT_ID", "").strip(" #\"'")  # "#" or quotes alone count as empty
+if _google_id:
     from fastmcp.server.auth.providers.google import GoogleProvider
 
     if not OWNER_EMAIL:
         raise SystemExit("OWNER_EMAIL must be set when Google login is enabled.")
     AUTH = GoogleProvider(
-        client_id=os.environ["GOOGLE_CLIENT_ID"],
+        client_id=_google_id,
         client_secret=os.environ["GOOGLE_CLIENT_SECRET"],
         base_url=BASE_URL,
         required_scopes=["openid", "https://www.googleapis.com/auth/userinfo.email"],
@@ -53,7 +55,14 @@ INSTRUCTIONS = (
     "Manage LinkedIn post drafts for the user. Drafts, edits and image uploads are safe. "
     "Nothing is posted by you: publish_draft / delete_linkedin_post only create an approval link that the "
     "USER must open in a browser and tap. Never say a post is published or deleted until the final tool "
-    "result says so. Show the user the exact text before asking for approval."
+    "result says so. Show the user the exact text before asking for approval.\n\n"
+    "WRITING STYLE for post text (LinkedIn does not render Markdown, so never use ** or # headings): "
+    "plain text only. Start with a short hook line, then short paragraphs separated by blank lines "
+    "(one idea each). Use line breaks and, if it helps, simple '- ' or numbered lines. Optional emoji, "
+    "sparingly. End with a question or call to action, then 3-5 relevant hashtags on the last line "
+    "(#Hashtag, no spaces inside a tag); they become real hashtags. Tagging a person needs their LinkedIn "
+    "ID, written @[Full Name](urn:li:person:ID); if the user has no ID, write the name as plain text and "
+    "tell them mentions cannot be added from here. Keep it under 3000 characters."
 )
 mcp = FastMCP("linkedin-remote", instructions=INSTRUCTIONS, auth=AUTH, mask_error_details=True)
 if not SPLIT:
@@ -95,6 +104,13 @@ def _text(text: str) -> str:
         raise ToolError("Text is empty.")
     if len(text) > MAX_TEXT:
         raise ToolError(f"Text is longer than {MAX_TEXT} characters.")
+    if "**" in text or re.search(r"(?m)^#{1,6}\s", text):
+        raise ToolError(
+            "LinkedIn does not render Markdown. Remove ** and '# ' headings and write plain text "
+            "(hashtags like #AI at the end are fine)."
+        )
+    if len(linkedin_client.format_commentary(text)) > linkedin_client.MAX_COMMENTARY:
+        raise ToolError("After LinkedIn formatting the text is over 3000 characters. Shorten it a little.")
     return text
 
 
@@ -294,7 +310,9 @@ async def check_publish(draft_id: str, upload_images: bool = False) -> str:
         out.append(f"FAIL {e}")
         return "\n".join(out)
 
-    if upload_images:
+    if upload_images and linkedin_client.DRY_RUN:
+        out.append("SKIP image upload test: DRY_RUN is on, so nothing is sent to LinkedIn")
+    elif upload_images:
         if not rows:
             out.append("INFO no images in the draft to test uploading")
         else:

@@ -1,4 +1,5 @@
 import os
+import re
 import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,17 +15,25 @@ from crypto import decrypt  # noqa: E402
 API = "https://api.linkedin.com"
 API_VERSION = os.getenv("LINKEDIN_VERSION", "202609")
 
-# DRY_RUN=1 sends nothing to LinkedIn (posting and deleting are skipped). Default is OFF, because a post
-# is only created after the user approves it on the approval page. Use DRY_RUN=1 while testing.
-DRY_RUN = os.getenv("DRY_RUN", "0") != "0"
+# DRY_RUN=1 sends nothing to LinkedIn (posting, deleting and image uploads are blocked).
+# Safe by default: live posting happens only when DRY_RUN is explicitly set to 0.
+DRY_RUN = os.getenv("DRY_RUN", "1").strip() != "0"
 
 # For first tests use POST_VISIBILITY=CONNECTIONS (only your connections can see the post).
 VISIBILITY = os.getenv("POST_VISIBILITY", "PUBLIC").upper()
 if VISIBILITY not in ("PUBLIC", "CONNECTIONS"):
     VISIBILITY = "PUBLIC"
 
-# '#' is left unescaped so hashtags work. If a post renders oddly, add '#' back to this set.
-_RESERVED = set("\\|{}@[]()<>*_~")
+MAX_COMMENTARY = 3000
+
+# LinkedIn "little text" format: these characters are special and must be escaped with a backslash.
+_RESERVED = set("\\|{}@[]()<>#*_~")
+# #Hashtag (needs at least one letter, so "#1" stays plain text) and an explicit mention
+# @[Name](urn:li:person:ID). Everything else is escaped.
+_TOKENS = re.compile(
+    r"(?P<mention>@\[(?P<name>[^\[\]\\\n]{1,100})\]\((?P<urn>urn:li:(?:person|organization):[A-Za-z0-9_-]{1,40})\))"
+    r"|(?<![\w#\\/&])#(?P<tag>(?=\w*[^\W\d_])\w+)"
+)
 
 
 class LinkedInError(Exception):
@@ -33,6 +42,27 @@ class LinkedInError(Exception):
 
 def escape_text(text: str) -> str:
     return "".join("\\" + c if c in _RESERVED else c for c in text)
+
+
+def format_commentary(text: str) -> str:
+    """Turn the draft text into LinkedIn's commentary format.
+
+    - line breaks and blank lines are kept
+    - #Hashtags become real clickable hashtags
+    - @[Name](urn:li:person:ID) becomes a real mention (the ID must be known)
+    - every other special character is escaped, so it shows up literally
+    """
+    text = "\n".join(line.rstrip() for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"))
+    out, pos = [], 0
+    for m in _TOKENS.finditer(text):
+        out.append(escape_text(text[pos : m.start()]))
+        if m.group("mention"):
+            out.append(f"@[{escape_text(m.group('name'))}]({m.group('urn')})")
+        else:
+            out.append("{hashtag|\\#|" + m.group("tag") + "}")
+        pos = m.end()
+    out.append(escape_text(text[pos:]))
+    return "".join(out)
 
 
 async def _credentials():
@@ -58,7 +88,7 @@ def _headers(token: str, extra: dict | None = None) -> dict:
 def build_body(owner: str, text: str) -> dict:
     return {
         "author": owner,
-        "commentary": escape_text(text),
+        "commentary": format_commentary(text),
         "visibility": VISIBILITY,
         "distribution": {
             "feedDistribution": "MAIN_FEED",
@@ -100,7 +130,13 @@ async def verify_token() -> str:
     return owner
 
 
+def _no_dry_run() -> None:
+    if DRY_RUN:
+        raise LinkedInError("DRY_RUN is on: nothing is sent to LinkedIn.")
+
+
 async def _upload_image(http: httpx.AsyncClient, token: str, owner: str, data: bytes) -> str:
+    _no_dry_run()
     r = await http.post(
         f"{API}/rest/images?action=initializeUpload",
         json={"initializeUploadRequest": {"owner": owner}},
@@ -119,6 +155,7 @@ async def _upload_image(http: httpx.AsyncClient, token: str, owner: str, data: b
 
 async def test_image_upload(images: list) -> list:
     """Upload images to LinkedIn but do NOT create a post. images: [(bytes, alt), ...]"""
+    _no_dry_run()
     token, owner = await _credentials()
     urns = []
     async with httpx.AsyncClient(timeout=60) as http:
@@ -129,6 +166,7 @@ async def test_image_upload(images: list) -> list:
 
 async def publish_post(text: str, images: list | None = None) -> str:
     """images: [(bytes, alt_text), ...]. 0 images: text, 1: single image, 2+: multi-image."""
+    _no_dry_run()
     token, owner = await _credentials()
     body = build_body(owner, text)
     async with httpx.AsyncClient(timeout=120) as http:
@@ -147,6 +185,7 @@ async def publish_post(text: str, images: list | None = None) -> str:
 
 
 async def delete_post(post_urn: str) -> None:
+    _no_dry_run()
     token, _ = await _credentials()
     url = f"{API}/rest/posts/{urllib.parse.quote(post_urn, safe='')}"
     async with httpx.AsyncClient(timeout=30) as http:

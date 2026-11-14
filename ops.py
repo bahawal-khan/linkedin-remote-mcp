@@ -23,12 +23,17 @@ async def fingerprint(draft_id) -> str | None:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-async def do_publish(draft_id) -> str:
+async def do_publish(draft_id, expected_fingerprint: str | None = None) -> str:
     if linkedin_client.DRY_RUN:
         return "DRY RUN is on: nothing was sent to LinkedIn. Set DRY_RUN=0 on the server for live posting."
     d = await db.claim_for_publish(draft_id)
     if not d:
         return "The draft cannot be published (not found, already published, or another request is running)."
+    # The draft is locked now ('publishing' cannot be edited). Check once more that it is exactly
+    # what the user approved, so an edit that slipped in between the check and the claim cannot go out.
+    if expected_fingerprint is not None and await fingerprint(draft_id) != expected_fingerprint:
+        await db.release_claim(draft_id)
+        return "The draft changed after approval, nothing was published. Create a new approval link."
     try:
         rows = await db.get_draft_images_data(draft_id)
         images = [(bytes(r["data"]), r["alt_text"]) for r in rows]
@@ -78,4 +83,15 @@ async def finish(draft_id, action: str) -> str:
         )
     if await fingerprint(draft_id) != row["fingerprint"]:
         return "The draft changed after the link was created, so the approval was discarded. Create a new approval link."
-    return await (do_publish(draft_id) if action == "publish" else do_delete_post(draft_id))
+    # An approval made while DRY_RUN was on must never turn into a live post if DRY_RUN is switched off
+    # afterwards. A visibility change (e.g. CONNECTIONS -> PUBLIC) voids the approval for the same reason.
+    if not linkedin_client.DRY_RUN and (
+        row["dry_run"] or (action == "publish" and row["visibility"] != linkedin_client.VISIBILITY)
+    ):
+        return (
+            "This approval was made under different settings (dry run or visibility) than the server "
+            "has now, so it was discarded. Create a new approval link."
+        )
+    if action == "publish":
+        return await do_publish(draft_id, row["fingerprint"])
+    return await do_delete_post(draft_id)

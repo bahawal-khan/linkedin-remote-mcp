@@ -189,7 +189,7 @@ def register(mcp) -> None:
         if not t:
             return bad_approval()
         if t["action"] == "publish":
-            msg = await ops.do_publish(t["draft_id"])
+            msg = await ops.do_publish(t["draft_id"], t["fingerprint"])
         else:
             msg = await ops.do_delete_post(t["draft_id"])
         return page("Result", f"<h2>{html.escape(msg)}</h2><p>You can go back to your assistant now.</p>")

@@ -213,6 +213,14 @@ async def claim_for_publish(draft_id):
     )
 
 
+async def release_claim(draft_id) -> None:
+    """Undo claim_for_publish when the draft turned out not to match the approval."""
+    await _count(
+        "UPDATE drafts SET status = 'draft', updated_at = now() WHERE id = %s AND status = 'publishing'",
+        (draft_id,),
+    )
+
+
 async def mark_published(draft_id, post_urn: str) -> None:
     conn = await _connect()
     async with conn:
@@ -316,8 +324,8 @@ async def consume_approved(draft_id, action: str, window_minutes: int = 10):
         " UPDATE approval_tickets SET used_at = now()"
         " WHERE draft_id = %s AND action = %s AND used_at IS NULL"
         " AND approved_at IS NOT NULL AND approved_at > now() - make_interval(mins => %s)"
-        " RETURNING fingerprint, approved_at"
-        ") SELECT fingerprint FROM c ORDER BY approved_at DESC LIMIT 1",
+        " RETURNING fingerprint, approved_at, visibility, dry_run"
+        ") SELECT fingerprint, visibility, dry_run FROM c ORDER BY approved_at DESC LIMIT 1",
         (draft_id, action, window_minutes),
     )
 
