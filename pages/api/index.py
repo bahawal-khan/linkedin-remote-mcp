@@ -20,7 +20,7 @@ import psycopg
 from psycopg.rows import dict_row
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from starlette.routing import Route
 
 MAX_FILES = 20
@@ -446,11 +446,31 @@ async def approve_post(request: Request):
     return _dead_link()
 
 
+HANDLERS = {
+    ("GET", "upload"): upload_page,
+    ("POST", "upload"): upload_post,
+    ("GET", "approve"): approve_page,
+    ("POST", "approve"): approve_post,
+}
+
+
+async def entry(request: Request):
+    """Vercel rewrites every URL to /api/index?path=<original path>."""
+    kind = request.query_params.get("path", "").strip("/")
+    handler = HANDLERS.get((request.method, kind))
+    if handler is None:
+        return PlainTextResponse("Not Found", status_code=404)
+    return await handler(request)
+
+
 app = Starlette(
     routes=[
         Route("/upload", upload_page, methods=["GET"]),
         Route("/upload", upload_post, methods=["POST"]),
         Route("/approve", approve_page, methods=["GET"]),
         Route("/approve", approve_post, methods=["POST"]),
+        Route("/", entry, methods=["GET", "POST"]),
+        Route("/api/index", entry, methods=["GET", "POST"]),
+        Route("/{rest:path}", entry, methods=["GET", "POST"]),
     ]
 )
