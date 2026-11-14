@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 700" width="420" height="700" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" role="img" aria-label="Animated 3D pipeline: your MCP client asks the MCP server, which stores drafts in Postgres, sends you an approval link on the pages app, and posts to LinkedIn only after you approve." xmlns:c2pa="http://c2pa.org/manifest">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa4af"/></marker>
+<radialGradient id="bg" cx="50%" cy="35%" r="80%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef1f5"/></radialGradient></defs>
+<rect x="1" y="1" width="418" height="698" rx="18" fill="url(#bg)" stroke="#d0d7de"/>
+<text x="210.0" y="40" text-anchor="middle" font-size="17" font-weight="800" fill="#1f2328">Draft → Approve → Post</text>
+<text x="210.0" y="62" text-anchor="middle" font-size="12" fill="#59636e">Nothing reaches LinkedIn until you approve.</text>
+<path id="e_ask" d="M162,196 L162,330" fill="none" stroke="#9aa4af" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#ah)"><animate attributeName="stroke-dashoffset" from="0" to="-28" dur="1.6s" repeatCount="indefinite"/></path><path id="e_approve" d="M156,165 L266,165" fill="none" stroke="#9aa4af" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#ah)"><animate attributeName="stroke-dashoffset" from="0" to="-28" dur="1.6s" repeatCount="indefinite"/></path><path id="e_mark" d="M392,196 L392,330" fill="none" stroke="#9aa4af" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#ah)"><animate attributeName="stroke-dashoffset" from="0" to="-28" dur="1.6s" repeatCount="indefinite"/></path><path id="e_save" d="M156,355 L266,355" fill="none" stroke="#9aa4af" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#ah)"><animate attributeName="stroke-dashoffset" from="0" to="-28" dur="1.6s" repeatCount="indefinite"/></path><path id="e_post" d="M162,386 L162,520" fill="none" stroke="#9aa4af" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#ah)"><animate attributeName="stroke-dashoffset" from="0" to="-28" dur="1.6s" repeatCount="indefinite"/></path>
+<text x="172" y="270" text-anchor="start" font-size="11" fill="#59636e">ask / link</text><text x="211" y="153" text-anchor="middle" font-size="11" fill="#59636e">tap Approve</text><text x="382" y="302" text-anchor="end" font-size="11" fill="#59636e">approval saved</text><text x="211" y="343" text-anchor="middle" font-size="11" fill="#59636e">draft</text><text x="172" y="462" text-anchor="start" font-size="11" fill="#59636e">after approval</text>
+
+<ellipse cx="100" cy="220" rx="52" ry="10" fill="#0b1220" opacity=".13">
+  <animate attributeName="rx" values="52;44;52" dur="4.4s" begin="-0.0s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>
+</ellipse>
+<g>
+  <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="4.4s" begin="-0.0s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>
+  <g>
+  <polygon points="52,150 100,174 100,208 52,184" fill="#c4724a"/><polygon points="148,150 100,174 100,208 148,184" fill="#a45a38"/>
+  <polygon points="100,126 148,150 100,174 52,150" fill="#f0a07a"/>
+  <polyline points="52,150 100,174 148,150" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.2"/>
+  <text x="100" y="155" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">You</text>
+  </g>
+</g>
+<text x="100" y="242" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2328">Your AI client</text>
+<text x="100" y="260" text-anchor="middle" font-size="11" fill="#59636e">phone / desktop</text>
+<ellipse cx="100" cy="410" rx="52" ry="10" fill="#0b1220" opacity=".13">
+  <animate attributeName="rx" values="52;44;52" dur="4.4s" begin="-1.1s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>
+</ellipse>
+<g>
+  <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="4.4s" begin="-1.1s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>
+  <g>
+  <polygon points="52,340 100,364 100,398 52,374" fill="#5a3fd1"/><polygon points="148,340 100,364 100,398 148,374" fill="#4630a8"/>
+  <polygon points="100,316 148,340 100,364 52,340" fill="#8f73ff"/>
+  <polyline points="52,340 100,364 148,340" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.2"/>
+  <text x="100" y="345" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">MCP</text>
+  </g>
+</g>
+<text x="100" y="432" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2328">MCP server</text>
+<text x="100" y="450" text-anchor="middle" font-size="11" fill="#59636e">Horizon</text>
+<ellipse cx="100" cy="600" rx="52" ry="10" fill="#0b1220" opacity=".13">
+  <animate attributeName="rx" values="52;44;52" dur="4.4s" begin="-2.2s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>
+</ellipse>
+<g>
+  <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="4.4s" begin="-2.2s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>
+  <g><animateTransform attributeName="transform" type="scale" additive="sum" values="1;1;1.08;1;1" keyTimes="0;0.82;0.870;0.92;1" dur="14s" repeatCount="indefinite"/>
+  <polygon points="52,530 100,554 100,588 52,564" fill="#0a66c2"/><polygon points="148,530 100,554 100,588 148,564" fill="#084f96"/>
+  <polygon points="100,506 148,530 100,554 52,530" fill="#3a98ee"/>
+  <polyline points="52,530 100,554 148,530" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.2"/>
+  <text x="100" y="535" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">in</text>
+  </g>
+</g>
+<text x="100" y="622" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2328">LinkedIn</text>
+<text x="100" y="640" text-anchor="middle" font-size="11" fill="#59636e">posts &amp; images</text>
+<ellipse cx="320" cy="220" rx="52" ry="10" fill="#0b1220" opacity=".13">
+  <animate attributeName="rx" values="52;44;52" dur="4.4s" begin="-3.3s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>
+</ellipse>
+<g>
+  <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="4.4s" begin="-3.3s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>
+  <g>
+  <polygon points="272,150 320,174 320,208 272,184" fill="#2f3640"/><polygon points="368,150 320,174 320,208 368,184" fill="#1f242b"/>
+  <polygon points="320,126 368,150 320,174 272,150" fill="#5b6676"/>
+  <polyline points="272,150 320,174 368,150" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.2"/>
+  <text x="320" y="155" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">Web</text>
+  </g>
+</g>
+<text x="320" y="242" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2328">Pages app</text>
+<text x="320" y="260" text-anchor="middle" font-size="11" fill="#59636e">Vercel</text>
+<ellipse cx="320" cy="410" rx="52" ry="10" fill="#0b1220" opacity=".13">
+  <animate attributeName="rx" values="52;44;52" dur="4.4s" begin="-0.7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>
+</ellipse>
+<g>
+  <animateTransform attributeName="transform" type="translate" values="0 0;0 -7;0 0" dur="4.4s" begin="-0.7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1"/>
+  <g>
+  <polygon points="272,340 320,364 320,398 272,374" fill="#1a9b78"/><polygon points="368,340 320,364 320,398 368,374" fill="#137a5e"/>
+  <polygon points="320,316 368,340 320,364 272,340" fill="#33d1a6"/>
+  <polyline points="272,340 320,364 368,340" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.2"/>
+  <text x="320" y="345" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">DB</text>
+  </g>
+</g>
+<text x="320" y="432" text-anchor="middle" font-size="14" font-weight="700" fill="#1f2328">Postgres</text>
+<text x="320" y="450" text-anchor="middle" font-size="11" fill="#59636e">Neon</text>
+<g>
+  <circle r="9" fill="#ffb454" opacity=".25"/><circle r="5" fill="#ffb454" stroke="#fff" stroke-width="1.5"/>
+  <animateMotion dur="14s" repeatCount="indefinite" path="M162,196 L162,330" keyPoints="0;0;1;1" keyTimes="0;0.02;0.12;1" calcMode="linear"/>
+  <animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.02;0.024;0.116;0.12;1"/>
+</g><g>
+  <circle r="9" fill="#33d1a6" opacity=".25"/><circle r="5" fill="#33d1a6" stroke="#fff" stroke-width="1.5"/>
+  <animateMotion dur="14s" repeatCount="indefinite" path="M156,355 L266,355" keyPoints="0;0;1;1" keyTimes="0;0.14;0.24;1" calcMode="linear"/>
+  <animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.14;0.144;0.236;0.24;1"/>
+</g><g>
+  <circle r="9" fill="#8f73ff" opacity=".25"/><circle r="5" fill="#8f73ff" stroke="#fff" stroke-width="1.5"/>
+  <animateMotion dur="14s" repeatCount="indefinite" path="M162,330 L162,196" keyPoints="0;0;1;1" keyTimes="0;0.26;0.36;1" calcMode="linear"/>
+  <animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.26;0.264;0.356;0.36;1"/>
+</g><g>
+  <circle r="9" fill="#f0a07a" opacity=".25"/><circle r="5" fill="#f0a07a" stroke="#fff" stroke-width="1.5"/>
+  <animateMotion dur="14s" repeatCount="indefinite" path="M156,165 L266,165" keyPoints="0;0;1;1" keyTimes="0;0.4;0.5;1" calcMode="linear"/>
+  <animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.4;0.404;0.496;0.5;1"/>
+</g><g>
+  <circle r="9" fill="#33d1a6" opacity=".25"/><circle r="5" fill="#33d1a6" stroke="#fff" stroke-width="1.5"/>
+  <animateMotion dur="14s" repeatCount="indefinite" path="M392,196 L392,330" keyPoints="0;0;1;1" keyTimes="0;0.52;0.62;1" calcMode="linear"/>
+  <animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.52;0.524;0.616;0.62;1"/>
+</g><g>
+  <circle r="9" fill="#3a98ee" opacity=".25"/><circle r="5" fill="#3a98ee" stroke="#fff" stroke-width="1.5"/>
+  <animateMotion dur="14s" repeatCount="indefinite" path="M162,386 L162,520" keyPoints="0;0;1;1" keyTimes="0;0.7;0.82;1" calcMode="linear"/>
+  <animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.7;0.704;0.816;0.82;1"/>
+</g>
+<g transform="translate(214,478)"><rect width="188" height="108" rx="12" fill="#fff" stroke="#d0d7de"/><text x="14" y="26" font-size="12.5" font-weight="700" fill="#1f2328">Your safety net</text><text x="14" y="48" font-size="11.5" fill="#59636e">1. A draft is saved</text><text x="14" y="66" font-size="11.5" fill="#59636e">2. You check the link</text><text x="14" y="84" font-size="11.5" fill="#59636e">3. You tap Approve</text><text x="14" y="102" font-size="11.5" fill="#59636e">4. Then it is posted</text></g>
+<metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTo4YjQzMjg2NS1jM2NmLTQ0NTctOTU4OC1iNGY3N2Q3YzE5NDkAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaN3bqAvlE72/eQ6GNor1ha4AAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDo0YTM3NjVkMS1mMjE4LTQ1MGUtODIzYS0zNjA0NjA2MmFmNzdscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNoQWUPjR2iidQoO5X8PGzxrAAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggI57tU1D8hO5CFFp5Y7OfOp3wYpfPxpw+84oNQr8DOtOkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaM0GIWH2UtWie7UEa48tW2cAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIC31NtuDgZabXyFbASQwH1E/Xm8Hu21s/orK7Ar9UA9tZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GStEZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjhiNDMyODY1LWMzY2YtNDQ1Ny05NTg4LWI0Zjc3ZDdjMTk0OS9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjc3M2IyMGU5LWUwMGItNDZhMy04Yjg0LTQ1MDg1N2RhZmFmNHJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCAjnu1TUPyE7kIUWnljs586nfBil8/GnD7zig1CvwM606JjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFgg9AHo45pzEdgAv/zrjjrDgNLds1pMLb/8hcLvY5M+HNCiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggtCYFaFeJ2G7PPNDfP0naMs7wEJWuRFSmgLEy1wP3PyV0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQCwVzVNEn59g0bhb99LyA2X//A1HGyUlJNQcQHQLlBiTmUZh15cbbXQ/aENkxXchLU+EBsoHz0WGXaQBKDuqtIo=</c2pa:manifest></metadata></svg>

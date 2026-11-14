@@ -1,143 +1,88 @@
-# linkedin-mcp
+<div align="center">
 
-A personal, self-hosted [MCP](https://modelcontextprotocol.io) server that lets an AI assistant (Claude)
-draft, edit, publish and delete LinkedIn posts on **your own account**: text posts, one image, or several images.
+# LinkedIn MCP
 
-You run your own copy with your own LinkedIn app and your own database. Nothing is shared with anyone else.
+**Write, edit and publish LinkedIn posts by chatting with Claude, from your phone or your desktop.**
 
-> **A human approves every post.** The assistant can only create an *approval link*. The post goes out
-> only after **you** open that link in a browser and tap the button. There is no scheduling and no
-> auto-posting. LinkedIn's API terms restrict automating posting, so you are responsible for using
-> this tool in line with [LinkedIn's terms](https://www.linkedin.com/legal/l/api-terms-of-use).
+Drafts · Images · Approval before posting · Self-hosted
 
-## What it can do
+![Python](https://img.shields.io/badge/python-3.11+-3776ab?logo=python&logoColor=white)
+![FastMCP](https://img.shields.io/badge/FastMCP-4.x-7c5cff)
+![Postgres](https://img.shields.io/badge/Postgres-Neon-27c39a?logo=postgresql&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-47%20passing-2ea44f)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-| Tool | What it does |
+<img src="docs/architecture.svg" alt="How the pieces fit together" width="760">
+
+</div>
+
+## What you can do
+
+| | |
 |---|---|
-| `create_draft`, `edit_draft`, `read_draft`, `list_drafts`, `delete_draft` | Manage drafts (text plus 0 to 9 images, alt text per image) |
-| `upload_image_link`, `list_images` | One-time browser link to upload images (works on a phone) |
-| `check_publish` | Dry check of a draft and the LinkedIn token. Posts nothing |
-| `publish_draft` | Creates the approval link |
-| `finish_publish` | Publishes, but only after you approved in the browser |
-| `delete_linkedin_post`, `finish_delete_post` | Same two-step flow for removing a published post |
-| `linkedin_status` | Token expiry, dry-run state |
+| **Drafts** | Save, read, edit and delete drafts |
+| **Images** | Upload from your phone, attach 1 to 9 images to a post |
+| **Formatting** | Line breaks kept, `#hashtags` become real hashtags |
+| **Publish** | Text only, one image, or a multi-image post |
+| **Delete** | Remove a published post from LinkedIn |
+| **Safe by default** | Nothing is posted until you tap Approve, and `DRY_RUN` is on unless you turn it off |
 
-## How it works
+13 tools in total. Everything runs on your own accounts, so nobody else can see your drafts.
 
-```
-Claude ──► MCP server (login) ── publish_draft ──► approval link
-                 ▲                                       │
-                 │ finish_publish                        ▼
-                 │                          your browser: upload / approve pages
-                 └──────────── database (Postgres) ◄─────┘
-```
+## Using it
 
-* **MCP server** (`server.py`): the tools. It holds the encrypted LinkedIn token and is the only
-  component that talks to LinkedIn.
-* **Pages** (`pages/`): a tiny web app for the two things that need a browser: uploading images and tapping
-  *Approve*. It can only store images and record an approval. It cannot post and cannot read the token.
-* **Database**: Postgres (the free tier of [Neon](https://neon.tech) is enough).
+Just talk to Claude:
 
-Why two parts? Some MCP hosts (for example Prefect Horizon) require a login on **every** URL, so a browser
-page on the same host shows `Bearer token required`. Hosting the two pages somewhere public (for example
-Vercel) solves that. If your host has no such login, skip `pages/`: leave `PAGES_URL` empty and the MCP
-server serves `/upload` and `/approve` itself (one tap then publishes immediately).
+> "Write a post about my new project, with hashtags, and save it as a draft."
+> "Give me an upload link." → open it on your phone, pick your photos
+> "Attach the 3 latest images to that draft."
+> "Publish it." → open the link Claude gives you, check the post, tap **Approve**
+> "I approved." → Claude publishes
+> "Delete that post from LinkedIn." → approve the removal the same way
 
-### Security model
+## Safety
 
-* The LinkedIn **Client Secret never leaves your computer**. `auth.py` runs locally and stores only an
-  encrypted access token (Fernet, key in `ENCRYPTION_KEY`) in the database.
-* Links are one-time, short-lived and stored only as hashes.
-* An approval is bound to the exact text and images. Edit the draft afterwards and the approval is void.
-* Uploaded photos are shrunk in your browser and metadata (location) is removed.
-* Optional: give the pages app a database role that cannot read the token (`scripts/pages_role.sql`).
-* Never expose the MCP server without a login. Anyone who can call its tools can create approval links
-  (they still cannot publish without your tap), and can read your drafts.
+- Claude can **never** publish or delete by itself. It only creates a one-time approval link that you tap.
+- Links expire in 15 minutes and work once. If the draft changes after you approve, the approval is void.
+- Your LinkedIn token is encrypted in the database. The app secret stays on your own computer.
+- Images are resized and stripped of location data before they are stored.
+- Server and pages are tested against fake logins, injection, replay and heavy parallel use.
 
-## Setup
+## Set it up (about 30 minutes)
 
-### 1. Database
-Create a Postgres database (Neon free tier works) and note the connection string.
+1. **Database:** create a free Postgres on [Neon](https://neon.tech) and copy the connection string.
+2. **LinkedIn app:** create one at [developers.linkedin.com](https://www.linkedin.com/developers/apps), add the products *Share on LinkedIn* and *Sign In with LinkedIn using OpenID Connect*, and set the redirect URL to `http://localhost:8080/callback`.
+3. **On your computer:**
+   ```bash
+   cp .env.example .env        # fill in DATABASE_URL, ENCRYPTION_KEY, LinkedIn client ID and secret
+   pip install -r requirements.txt
+   python scripts/migrate.py   # create the tables
+   python auth.py              # log in to LinkedIn once
+   ```
+   Make the key with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` and keep a copy.
+4. **MCP server:** deploy `server.py:mcp` on [Prefect Horizon](https://horizon.prefect.io) (keep its authentication ON) with `DATABASE_URL`, `ENCRYPTION_KEY`, `DRY_RUN`, `POST_VISIBILITY`, `PAGES_URL`. Do not add the LinkedIn client secret there.
+5. **Pages app (for phone upload and approve):** import this repo in Vercel with Root Directory `pages`, add `DATABASE_URL`, turn off *Vercel Authentication*, then set `PAGES_URL` on the MCP server.
+6. **Claude:** *Settings → Connectors → Add custom connector* with your server URL.
 
-### 2. LinkedIn app
-1. Create an app at <https://www.linkedin.com/developers/apps> (it needs a LinkedIn Page, any Page will do).
-2. Under **Products**, add **Share on LinkedIn** and **Sign In with LinkedIn using OpenID Connect**.
-3. Under **Auth**, add the redirect URL `http://localhost:8080/callback`.
+Start with `DRY_RUN=1` and `POST_VISIBILITY=CONNECTIONS`. When a test looks right, set `DRY_RUN=0`.
 
-### 3. Configure and connect your account (on your own computer)
-```bash
-cp .env.example .env            # fill in DATABASE_URL, ENCRYPTION_KEY, LINKEDIN_CLIENT_ID/SECRET
-pip install -r requirements.txt
-python scripts/migrate.py       # creates the tables
-python auth.py                  # opens LinkedIn, stores the encrypted token
-```
-Generate the key with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
-and keep a copy somewhere safe: without it the stored token cannot be decrypted.
-The token lasts about 60 days; run `python auth.py` again to renew it.
+## Good to know
 
-### 4. Try it locally
-```bash
-python server.py                       # http://127.0.0.1:8000/mcp (same-host mode)
-python try_tools.py linkedin_status
-```
-Keep `DRY_RUN=1` and `POST_VISIBILITY=CONNECTIONS` for your first tests.
+- The LinkedIn token lasts about 60 days. Run `python auth.py` again to renew it (`linkedin_status` shows the days left).
+- Tagging a person needs their LinkedIn ID: `@[Full Name](urn:li:person:ID)`. Without it the name stays plain text.
+- LinkedIn does not render Markdown, so `**bold**` and `# headings` are refused.
+- Never share your `.env`, your database URL or approval links.
 
-## Deploy
+## Settings
 
-### MCP server (Prefect Horizon or any host that runs FastMCP)
-* Entrypoint: `server.py:mcp`
-* Environment variables: `DATABASE_URL`, `ENCRYPTION_KEY`, `LINKEDIN_VERSION`, `POST_VISIBILITY`,
-  `DRY_RUN`, and `PAGES_URL` (the URL of the pages app, see below). Do **not** put `LINKEDIN_CLIENT_SECRET` on the server.
-* Add the server URL in Claude: *Settings → Connectors → Add custom connector*.
-
-### Pages (Vercel)
-1. Import this repository in Vercel and set **Root Directory** to `pages`.
-2. Environment variable: `DATABASE_URL` (ideally the restricted role from `scripts/pages_role.sql`).
-3. Deploy, then set `PAGES_URL=https://your-project.vercel.app` on the MCP server and redeploy it.
-
-Run `python scripts/migrate.py` once before the first deploy so the tables exist.
-
-## Configuration
-
-| Variable | Used by | Meaning |
-|---|---|---|
-| `DATABASE_URL` | server, pages | Postgres connection string |
-| `ENCRYPTION_KEY` | server, `auth.py` | Fernet key for the stored token |
-| `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | `auth.py` only | Your LinkedIn app |
-| `LINKEDIN_VERSION` | server | LinkedIn API version (`YYYYMM`). Change it if LinkedIn reports an inactive version |
-| `POST_VISIBILITY` | server | `PUBLIC` or `CONNECTIONS` |
-| `DRY_RUN` | server | `1` (the default when unset) sends nothing to LinkedIn. Set `0` for live posting |
-| `PAGES_URL` | server | Public URL of `pages/`. Empty = same-host mode |
-| `BASE_URL`, `GOOGLE_CLIENT_ID/SECRET`, `OWNER_EMAIL` | server | Optional built-in Google login (for hosts without their own) |
-
-## Using this as a public project
-
-This repo is a **self-hosted, single-user** tool. There is no shared server: every person clones it and runs
-their own copy with their own accounts, so nobody can see anybody else's drafts or token.
-
-Each person needs their own: LinkedIn developer app, Postgres database (Neon free tier works), MCP host
-(Horizon or similar) and, for phone use, their own Vercel pages app. Never use someone else's `DATABASE_URL`.
-
-Rules that keep a self-hosted copy safe:
-
-- **The MCP server must be behind a login.** The server has no login of its own unless you enable the Google
-  option. On Horizon keep authentication ON. Anyone who can call the MCP URL can read and edit your drafts.
-  (Publishing still needs a tap on your approval link, so a stranger cannot post.)
-- Keep `LINKEDIN_CLIENT_SECRET` only on your own computer (used by `python auth.py`). It must not be set on the server.
-- `.env` is git-ignored. If a password ever leaks (chat, screenshot, commit), rotate it at once: change the Neon
-  password and update `DATABASE_URL` on every host.
-- In the Vercel project turn off "Vercel Authentication" for the pages app, or approval links will ask a phone for a
-  Vercel login. The pages are still protected by one-time, unguessable links.
-- Optional hardening: run `scripts/pages_role.sql` and give the Vercel app that limited database role, so it cannot
-  read the stored LinkedIn token even if its environment leaks.
-- The LinkedIn token lasts about 60 days. Run `python auth.py` again before it ends (`linkedin_status` shows the days left).
-
-## Writing posts
-
-Post text is sent as plain text. Line breaks and blank lines are kept. `#Hashtags` become real hashtags.
-Special LinkedIn characters such as `* _ ( ) | @` are escaped so they show up exactly as typed. Markdown (`**bold**`,
-`# heading`) is not rendered by LinkedIn, so drafts containing it are refused. To tag a person write
-`@[Full Name](urn:li:person:ID)`; this needs their LinkedIn ID and is not verified against live LinkedIn.
+| Variable | Meaning |
+|---|---|
+| `DATABASE_URL` | Postgres connection string |
+| `ENCRYPTION_KEY` | Encrypts the stored LinkedIn token |
+| `DRY_RUN` | `1` (default) sends nothing to LinkedIn, `0` posts for real |
+| `POST_VISIBILITY` | `CONNECTIONS` or `PUBLIC` |
+| `PAGES_URL` | URL of the Vercel pages app (empty = same-host mode) |
+| `LINKEDIN_VERSION` | LinkedIn API version, change if LinkedIn says it is inactive |
 
 ## Tests
 
@@ -145,15 +90,9 @@ Special LinkedIn characters such as `* _ ( ) | @` are escaped so they show up ex
 pip install -r requirements-dev.txt
 TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/postgres pytest
 ```
-The tests create and drop a throw-away database and use a fake LinkedIn, so nothing is posted.
 
-## Limits
-
-* Up to 9 images per post. Image posts, multi-image posts and deleting posts depend on LinkedIn's API,
-  which can change. Check the LinkedIn docs if a call is rejected.
-* Self-serve LinkedIn apps get no refresh token: renew every ~60 days.
-* Text posts only support what LinkedIn's commenting format supports (`#hashtags` are left unescaped).
+No test ever contacts LinkedIn.
 
 ## License
 
-MIT
+MIT, made by Bahawal Khan.
